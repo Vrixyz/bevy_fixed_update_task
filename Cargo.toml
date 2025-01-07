@@ -1,0 +1,29 @@
+[package]
+name = "bevy_fixed_update_task"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = ["x11"]
+x11 = ["bevy/x11"]
+
+[dependencies]
+bevy = { version = "0.15", default-features = false }
+crossbeam-channel = "0.5"
+profiling = "1.0"
+
+[dev-dependencies]
+bevy = { version = "0.15", default-features = false, features = [
+    "bevy_asset",
+    "bevy_render",
+    "bevy_window",
+    "bevy_text",
+    "bevy_ui",
+    "bevy_winit",
+    "default_font",
+    "bevy_gizmos",
+    # Without multi threading, this crate adds a frame delay on the fixed update.
+    "multi_threaded",
+] }
+rand = "0.8"
+bevy_transform_interpolation = { version = "0.1", git = "https://github.com/Vrixyz/bevy_transform_interpolation.git", branch = "background_task" }
