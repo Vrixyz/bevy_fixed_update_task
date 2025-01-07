@@ -1,5 +1,7 @@
 # Physics timestep loop
 
+## Your goal
+
 Let's assume we want to make a game running at 60 frames per second, and use physics simulations.
 
 In the ideal world, running everything sequentially allows us to finish below the "1/60" seconds allotted time frame.
@@ -8,23 +10,30 @@ When running complex physics simulations, the simulation step can be expensive, 
 
 After benchmarking, you realize your simulation step is way too expensive to be able to sustain 60 frames per seconds.
 
+## Your choice
+
 You have a few choices:
 
 - Tweak all the knobs of your physics engine
 
 Alter the physics engine configuration to see if some can yield to improvement.
-It often means tuning down precision in favor of speed, a valid choice for a lot of projects!
+It often means tuning down precision in favor of speed.
 
 - Reduce your frame per seconds to 30 :fear:
 
-This will double your time budget! Great! But now, the game isn't just as smooth as before...
+This will double your time budget! Great!
+
+But now, the game isn't just as smooth as before...
 
 - Run the physics step in parallel to the whole frame loop.
 
 You realize there's nothing you can do to make your physics simulation step fit in your time budget,
-even more so if we want an option for 120 frames per second.
+even more so if we want an option for 120 frames per second,
+so you run the physics simulation on another thread.
 
-The solution is to run the physics timestep in parallel to the whole frame, and read its output later:
+## Physics step in parallel
+
+Let's run the physics timestep in parallel to the whole frame, and read its output later:
 
 "But if the physics doesn't happen every frames, my moving objects will appear to stutter?"
 
