@@ -37,12 +37,13 @@ Let's run the physics timestep in parallel to the whole frame, and read its outp
 
 "But if the physics doesn't happen every frames, my moving objects will appear to stutter?"
 
-Yes. That's where interpolation becomes interesting:
+Yes. That's where interpolation becomes interesting: we'll add a transition phase from previous state to current one,
+to hide the fact that next state is being computed.
 
-Let's try 30 physics simulations per seconds: when receiving physics output, we're doing a few things:
+When receiving physics output, we're doing a few things:
 
 1. Wait for the rendering time to catch up on the simulated time.
-2. start a new physics step, simulating "1/30" seconds.
+2. start a new physics step, simulating "X" seconds (our fixed update timestep).
 3. start for each moving abject, a transition from previous position to the newly computed one.
    - This transition will end when next physics step is handled, because we're using "fixed" time steps, we know how long it takes!
 
