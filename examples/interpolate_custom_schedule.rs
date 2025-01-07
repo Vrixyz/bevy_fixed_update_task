@@ -1,14 +1,4 @@
-//! This example showcases how `Transform` interpolation can be used to make movement
-//! appear smooth at fixed timesteps.
-//!
-//! `Transform` interpolation updates `Transform` at every frame in between
-//! fixed ticks to smooth out the visual result. The interpolation is done
-//! from the previous positions to the current positions, which keeps movement smooth,
-//! but has the downside of making movement feel slightly delayed as the rendered
-//! result lags slightly behind the true positions.
-//!
-//! For an example of how transform extrapolation could be implemented instead,
-//! see `examples/extrapolation.rs`.
+//! This example showcases how interpolation can be implemented with this crate.
 
 use bevy::{
     color::palettes::{
@@ -144,11 +134,12 @@ fn setup(
 
     let mesh = meshes.add(Rectangle::from_length(60.0));
 
-    commands.insert_resource(TaskSleepTime(Duration::from_secs_f32(1.0 / 255.0)));
+    // Sets the "fake performance" to 1Hz.
+    commands.insert_resource(TaskSleepTime(Duration::from_secs_f32(1.0)));
     commands.spawn((
         Timestep {
             // Set the fixed timestep to just 2 Hz for demonstration purposes.
-            timestep: Duration::from_secs_f32(1.0 / 60.0),
+            timestep: Duration::from_secs_f32(1.0 / 2.0),
         },
         TaskResults::<TaskWorkerTraitImpl>::default(),
         TaskWorker {
@@ -423,7 +414,7 @@ pub mod task_user {
         ) {
             let mut q_transforms =
                 world.query_filtered::<(&mut Transform, &mut LinearVelocity), With<ToMove>>();
-            for (entity, new_transform, new_lin_vel, _) in result.result_raw.transforms.iter() {
+            for (entity, new_transform, new_lin_vel, _) in result.result_raw.result.iter() {
                 if let Ok((mut transform, mut lin_vel)) = q_transforms.get_mut(&mut world, *entity)
                 {
                     *transform = *new_transform;

@@ -24,7 +24,8 @@ pub struct WorkTask<T: TaskWorkerTrait + Send + Sync> {
 /// The result of a task to be handled.
 #[derive(Debug, Default)]
 pub struct TaskResultRaw<T: TaskWorkerTrait + Send + Sync> {
-    pub transforms: T::TaskResultPure,
+    /// Result of the task.
+    pub result: T::TaskResultPure,
     /// The duration in seconds **simulated** by the simulation.
     ///
     /// This is different from the real time it took to simulate the physics.
@@ -210,7 +211,9 @@ impl FixedMain {
         // Compute difference between task and render time.
         let clock = world.resource::<Time>().as_generic();
         let mut query = world.query::<(&mut TaskToRenderTime, &Timestep)>();
-        let (mut task_to_render_time, timestep) = query.single_mut(world);
+        let Ok((mut task_to_render_time, timestep)) = query.get_single_mut(world) else {
+            return;
+        };
         task_to_render_time.diff += clock.delta().as_secs_f64();
         if task_to_render_time.diff < timestep.timestep.as_secs_f64() {
             // Task is too far ahead, we should not read the simulation.
@@ -301,7 +304,7 @@ pub fn spawn_task<T: TaskWorkerTrait>(
                     .worker
                     .work(entity_ctx, transforms_to_move, timestep, substep_count);
             let result = TaskResultRaw::<T> {
-                transforms: transforms_to_move,
+                result: transforms_to_move,
                 simulated_time,
             };
             let _ = sender.send(result);
