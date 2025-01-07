@@ -1,6 +1,6 @@
 # Physics timestep loop
 
-Let's assume we want to make a game running at 60fps, leveraging physics.
+Let's assume we want to make a game running at 60 frames per second, and use physics simulations.
 
 In the ideal world, running everything sequentially allows us to finish below the "1/60" seconds allotted time frame.
 
