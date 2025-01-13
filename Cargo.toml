@@ -4,16 +4,7 @@ version = "0.1.0"
 description = "A fixed update for bevy, unthrottled from bevy's default update loop."
 edition = "2021"
 license = "MIT OR Apache-2.0"
-keywords = [
-    "bevy",
-    "task",
-    "background",
-    "performance",
-    "update",
-    "fixed",
-    "simulation",
-    "determinism",
-]
+keywords = ["bevy", "task", "performance", "update", "simulation"]
 
 [features]
 default = ["x11"]
