@@ -9,6 +9,8 @@ so you can improve your time budget.
 
 ## How it works
 
+:warning: this crate makes most sense when using bevy's `multi_threaded` feature. Otherwise, this just adds unnecessary overhead.
+
 It's quite similar to how bevy's fixed update works, but eagerly extracts ECS data into a background task, to synchronize it only when we exceed `Time<Fixed>` + its accumulated time.
 
 The implementation doesn't use `Time<Fixed>` but a component approach `TimeStep`, `SubstepCount`, `TaskToRender`.
