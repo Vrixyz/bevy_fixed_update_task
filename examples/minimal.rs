@@ -1,7 +1,7 @@
 //! This is a minimal example to show how synchronized fixed update works.
 
 use bevy::prelude::*;
-use bevy_fixed_update_task::background_fixed_schedule::{
+use bevy_fixed_update_task::{
     BackgroundFixedUpdatePlugin, TaskResults, TaskWorker, TaskWorkerTrait, Timestep,
 };
 
@@ -74,7 +74,7 @@ impl TaskWorkerTrait for TaskWorkerTraitImpl {
     fn write_back(
         &self,
         _worker_entity: Entity,
-        result: bevy_fixed_update_task::background_fixed_schedule::TaskResult<Self>,
+        result: bevy_fixed_update_task::TaskResult<Self>,
         world: &mut World,
     ) {
         world.get_resource_mut::<SimulationTime>().unwrap().time = result.result_raw.result;

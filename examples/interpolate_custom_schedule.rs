@@ -8,7 +8,7 @@ use bevy::{
     ecs::schedule::ScheduleLabel,
     prelude::*,
 };
-use bevy_fixed_update_task::background_fixed_schedule::{
+use bevy_fixed_update_task::{
     BackgroundFixedUpdatePlugin, PostWriteBack, PreWriteBack, TaskResults, TaskToRenderTime,
     TaskWorker, Timestep,
 };
@@ -333,7 +333,7 @@ pub mod task_user {
     use std::{slice::IterMut, time::Duration};
 
     use bevy::prelude::*;
-    use bevy_fixed_update_task::background_fixed_schedule::TaskWorkerTrait;
+    use bevy_fixed_update_task::TaskWorkerTrait;
 
     #[derive(Resource)]
     pub struct TaskSleepTime(pub Duration);
@@ -410,7 +410,7 @@ pub mod task_user {
         fn write_back(
             &self,
             _worker_entity: Entity,
-            result: bevy_fixed_update_task::background_fixed_schedule::TaskResult<Self>,
+            result: bevy_fixed_update_task::TaskResult<Self>,
             mut world: &mut World,
         ) {
             let mut q_transforms =

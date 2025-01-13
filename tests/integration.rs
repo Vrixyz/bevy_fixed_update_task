@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use bevy::{prelude::*, time::TimeUpdateStrategy};
-use bevy_fixed_update_task::background_fixed_schedule::{
+use bevy_fixed_update_task::{
     BackgroundFixedUpdatePlugin, SubstepCount, TaskToRenderTime, TaskWorker, TaskWorkerTrait,
     Timestep,
 };
@@ -144,7 +144,7 @@ impl TaskWorkerTrait for TaskWorkerTraitImpl {
     fn write_back(
         &self,
         worker_entity: Entity,
-        result: bevy_fixed_update_task::background_fixed_schedule::TaskResult<Self>,
+        result: bevy_fixed_update_task::TaskResult<Self>,
         world: &mut World,
     ) {
         for (e, t) in result.result_raw.result.positions.iter() {
