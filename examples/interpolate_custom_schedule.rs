@@ -134,8 +134,8 @@ fn setup(
 
     let mesh = meshes.add(Rectangle::from_length(60.0));
 
-    // Sets the "fake performance" to 1Hz.
-    commands.insert_resource(TaskSleepTime(Duration::from_secs_f32(1.0)));
+    // Sets the "fake performance" to 2.1Hz, just fast enough for the execution to not lag.
+    commands.insert_resource(TaskSleepTime(Duration::from_secs_f32(1.0 / 2.1)));
     commands.spawn((
         Timestep {
             // Set the fixed timestep to just 2 Hz for demonstration purposes.
