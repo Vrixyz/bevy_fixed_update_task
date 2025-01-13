@@ -485,7 +485,7 @@ dependencies = [
 
 [[package]]
 name = "bevy_fixed_update_task"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "bevy",
  "bevy_transform_interpolation",
