@@ -9,12 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.0](https://github.com/Vrixyz/bevy_fixed_update_task/releases/tag/v0.1.0) - 2025-01-13
 
-### Other
+### Features
 
-- better default for example
-- a few tests + CI + release-plz + docs improvements
-- easier wording
-- add a few headers to docs
-- docs clearup
-- add readme + comments cleaning
-- import code from https://github.com/Jondolf/bevy_transform_interpolation/pull/7
+- Custom timestep or substep count per frame.
+- Component approach, support multiple concurrent fixed "task" update.
+- Examples for minimal approach + interpolation integration.
+- Documentation to explain how this crate works on the [readme](README.md) and [docs](./docs/).
