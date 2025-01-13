@@ -386,7 +386,7 @@ pub mod task_user {
             input.data
         }
 
-        fn extract(&self, world: &mut World) -> TaskExtractedData {
+        fn extract(&self, _worker_entity: Entity, world: &mut World) -> TaskExtractedData {
             // TODO: use a system rather than a world.
             let mut query = world.query_filtered::<
                             (Entity, &Transform, &LinearVelocity, &AngularVelocity),
@@ -409,6 +409,7 @@ pub mod task_user {
 
         fn write_back(
             &self,
+            _worker_entity: Entity,
             result: bevy_fixed_update_task::background_fixed_schedule::TaskResult<Self>,
             mut world: &mut World,
         ) {

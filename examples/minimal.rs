@@ -66,13 +66,14 @@ impl TaskWorkerTrait for TaskWorkerTraitImpl {
         input.time
     }
 
-    fn extract(&self, world: &mut World) -> TaskExtractedData {
+    fn extract(&self, _worker_entity: Entity, world: &mut World) -> TaskExtractedData {
         let time = world.resource::<SimulationTime>();
         TaskExtractedData { time: time.time }
     }
 
     fn write_back(
         &self,
+        _worker_entity: Entity,
         result: bevy_fixed_update_task::background_fixed_schedule::TaskResult<Self>,
         world: &mut World,
     ) {
