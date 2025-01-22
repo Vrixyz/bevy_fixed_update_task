@@ -1,4 +1,6 @@
-#[deny(missing_docs)]
+#![warn(missing_docs)]
+#![doc = include_str!("../README.md")]
+
 use bevy::ecs::schedule::{LogLevel, ScheduleBuildSettings, ScheduleLabel};
 use bevy::prelude::*;
 use bevy::tasks::AsyncComputeTaskPool;
@@ -43,7 +45,7 @@ pub struct WorkTask<T: TaskWorkerTrait + Send + Sync> {
 /// The result of a task to be handled.
 #[derive(Debug, Default, Reflect)]
 pub struct TaskResultRaw<T: TaskWorkerTrait + Send + Sync> {
-    /// Result of the task.
+    /// Result of the task, belonging to user-side.
     pub result: T::TaskResultPure,
     /// The duration in seconds **simulated** by the simulation.
     ///
@@ -55,7 +57,11 @@ pub struct TaskResultRaw<T: TaskWorkerTrait + Send + Sync> {
 
 /// The result of a task to be handled.
 pub struct TaskResult<T: TaskWorkerTrait + Send + Sync> {
+    /// The result of the task, as received by the worker.
     pub result_raw: TaskResultRaw<T>,
+    /// The time elapsed while waiting for the task.
+    ///
+    /// This includes any waiting time needed for the [`Time<Virtual>`] to catch up with the simulation.
     pub render_time_elapsed_during_the_simulation: Duration,
     /// The time at which we started the simulation, as reported by the used render time [`Time::elapsed`].
     pub started_at_render_time: Duration,
@@ -82,9 +88,10 @@ impl<T: TaskWorkerTrait + Send + Sync> Default for TaskResults<T> {
     }
 }
 
+/// Plugin to handle background tasks.
 #[derive(Default)]
 pub struct BackgroundFixedUpdatePlugin<T: TaskWorkerTrait> {
-    pub phantom: std::marker::PhantomData<T>,
+    phantom: std::marker::PhantomData<T>,
 }
 
 impl<T: TaskWorkerTrait> Plugin for BackgroundFixedUpdatePlugin<T> {
@@ -170,6 +177,7 @@ pub struct TaskToRenderTime {
 #[derive(Component, Reflect, Clone)]
 #[require(SubstepCount)]
 pub struct Timestep {
+    /// Duration of [`Time<Virtual>`] which should be elapsed between each fixed update.
     pub timestep: Duration,
 }
 
@@ -200,15 +208,27 @@ impl default::Default for SubstepCount {
 #[derive(Clone, Component)]
 #[require(TaskToRenderTime, Timestep, TaskExtractedDataHolder::<T>)]
 pub struct TaskWorker<T: TaskWorkerTrait> {
+    /// The worker that will handle the task.
+    /// The type is driven by user-side, so the user can add any data they need.
     pub worker: T,
 }
 
+/// Trait to be implemented by the user to support the background task system.
+///
+/// While user's implementation is not mandatory to use the ECS (it could fetch data from and to a database for example).
+/// The documentation wording assumes that user is interacting with the ECS for clarity.
 pub trait TaskWorkerTrait: Clone + Send + Sync + 'static {
+    /// The type of the data extracted to be used by the task.
     type TaskExtractedData: Send + Sync + 'static;
+    /// The type of the result of the task.
     type TaskResultPure: Send + Sync + 'static;
 
+    /// Extracts the data to be used by the task from the ECS.
+    ///
+    /// That data will be passed to [`work`].
     fn extract(&self, worker_entity: Entity, world: &mut World) -> Self::TaskExtractedData;
 
+    /// Execute the task. Called from a bevy [`AsyncComputeTaskPool`] (on a separate thread if supported).
     fn work(
         &self,
         worker_entity: Entity,
@@ -217,17 +237,11 @@ pub trait TaskWorkerTrait: Clone + Send + Sync + 'static {
         substep_count: u32,
     ) -> Self::TaskResultPure;
 
+    /// Writes back the result of the task to the ECS.
     fn write_back(&self, worker_entity: Entity, result: TaskResult<Self>, world: &mut World);
 }
 
-#[derive(SystemSet, Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum FixedMainLoop {
-    Before,
-    During,
-    After,
-}
-
-/// Executes before the task result is propagated to the ECS.
+/// Executes before the task result is propagated to the ECS (by calling [`TaskWorkerTrait::write_back`]).
 #[derive(ScheduleLabel, Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct PreWriteBack;
 
@@ -242,8 +256,11 @@ pub struct SpawnTask;
 /// Spawn a new background task.
 #[derive(SystemSet, Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum SpawnTaskSet {
+    /// Called before spawning the task.
     PreSpawn,
+    /// Spawns the task.
     Spawn,
+    /// Called after spawning the task.
     PostSpawn,
 }
 
@@ -316,6 +333,7 @@ impl FixedMain {
 pub struct HandleTask;
 
 impl HandleTask {
+    /// Runs in order the [`PreWriteBack`], [`WriteBack`],[`PostWriteBack`], [`SpawnTask`] schedules.
     pub fn run_schedule(world: &mut World) {
         let _ = world.try_schedule_scope(PreWriteBack, |world, schedule| {
             schedule.run(world);
@@ -332,6 +350,7 @@ impl HandleTask {
     }
 }
 
+/// Calls [`TaskWorkerTrait::extract`].
 pub fn extract<T: TaskWorkerTrait>(world: &mut World) {
     let Ok((entity_ctx, worker)) = world
         .query_filtered::<(Entity, &TaskWorker<T>), With<Timestep>>()
