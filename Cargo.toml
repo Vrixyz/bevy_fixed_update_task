@@ -37,4 +37,4 @@ bevy = { version = "0.15", default-features = false, features = [
 rand = "0.8"
 bevy_transform_interpolation = { version = "0.1", git = "https://github.com/Vrixyz/bevy_transform_interpolation.git", branch = "background_task" }
 # bevy_rapier2d = { version = "0.28", git = "https://github.com/dimforge/bevy_rapier.git", branch = "master" }
-bevy_rapier2d = { path = "../bevy_rapier/bevy_rapier2d" }
+bevy_rapier2d = { version = "0.28", git = "https://github.com/Vrixyz/bevy_rapier.git", branch = "opt-out-physics_set" }
