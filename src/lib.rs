@@ -1,3 +1,4 @@
+#[deny(missing_docs)]
 use bevy::ecs::schedule::{LogLevel, ScheduleBuildSettings, ScheduleLabel};
 use bevy::prelude::*;
 use bevy::tasks::AsyncComputeTaskPool;
@@ -6,13 +7,30 @@ use crossbeam_channel::Receiver;
 use std::default;
 use std::{collections::VecDeque, time::Duration};
 
+/// Struct to temporarily store the extracted data.
+/// It is only filled in between the [`extract`] and [`spawn_task`] systems.
+///
+/// It is NOT expected to be used by end user.
+#[derive(Component, Reflect)]
+pub struct TaskExtractedDataHolder<T: TaskWorkerTrait> {
+    pub(crate) extracted_data: Option<T::TaskExtractedData>,
+}
+
+impl<T: TaskWorkerTrait> Default for TaskExtractedDataHolder<T> {
+    fn default() -> Self {
+        Self {
+            extracted_data: None,
+        }
+    }
+}
+
 ///
 /// The task inside this component is polled before [`FixedMain`].
 ///
 /// Any changes to [`Transform`]s being modified by the task will be overridden when the task finishes.
 ///
 /// This component is removed when the task is done
-#[derive(Component, Debug)]
+#[derive(Component, Debug, Reflect)]
 pub struct WorkTask<T: TaskWorkerTrait + Send + Sync> {
     /// The time in seconds at which we started the simulation, as reported by the used render time [`Time::elapsed`].
     pub started_at_render_time: Duration,
@@ -23,7 +41,7 @@ pub struct WorkTask<T: TaskWorkerTrait + Send + Sync> {
 }
 
 /// The result of a task to be handled.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Reflect)]
 pub struct TaskResultRaw<T: TaskWorkerTrait + Send + Sync> {
     /// Result of the task.
     pub result: T::TaskResultPure,
@@ -46,7 +64,7 @@ pub struct TaskResult<T: TaskWorkerTrait + Send + Sync> {
 }
 
 /// The result of a task to be handled.
-#[derive(Component)]
+#[derive(Component, Reflect)]
 pub struct TaskResults<T: TaskWorkerTrait + Send + Sync> {
     /// The results of the tasks.
     ///
@@ -71,6 +89,16 @@ pub struct BackgroundFixedUpdatePlugin<T: TaskWorkerTrait> {
 
 impl<T: TaskWorkerTrait> Plugin for BackgroundFixedUpdatePlugin<T> {
     fn build(&self, app: &mut App) {
+        app.register_type::<TaskToRenderTime>();
+        app.register_type::<Timestep>();
+        app.register_type::<SubstepCount>();
+        /*
+        // TODO: register types used
+        app.register_type::<TaskExtractedDataHolder<T>>();
+        app.register_type::<WorkTask<T>>();
+        app.register_type::<TaskResultRaw<T>>();
+        app.register_type::<TaskResults<T>>();
+        */
         app.add_systems(
             bevy::app::prelude::RunFixedMainLoop,
             FixedMain::run_schedule::<T>,
@@ -97,8 +125,20 @@ impl<T: TaskWorkerTrait> Plugin for BackgroundFixedUpdatePlugin<T> {
                 });
         });
         app.edit_schedule(SpawnTask, |schedule| {
+            schedule.configure_sets(
+                (
+                    SpawnTaskSet::PreSpawn,
+                    SpawnTaskSet::Spawn,
+                    SpawnTaskSet::PostSpawn,
+                )
+                    .chain(),
+            );
             schedule
-                .add_systems((extract::<T>, spawn_task::<T>).chain())
+                .add_systems(
+                    (extract::<T>, spawn_task::<T>)
+                        .chain()
+                        .in_set(SpawnTaskSet::Spawn),
+                )
                 .set_build_settings(ScheduleBuildSettings {
                     ambiguity_detection: LogLevel::Error,
                     ..default()
@@ -158,14 +198,14 @@ impl default::Default for SubstepCount {
 /// Struct to be able to configure what the task should do.
 // but their type parameter not enforcing `Default`  makes the require macro fail. This should be a bevy issue.
 #[derive(Clone, Component)]
-#[require(TaskToRenderTime, Timestep)]
+#[require(TaskToRenderTime, Timestep, TaskExtractedDataHolder::<T>)]
 pub struct TaskWorker<T: TaskWorkerTrait> {
     pub worker: T,
 }
 
 pub trait TaskWorkerTrait: Clone + Send + Sync + 'static {
-    type TaskExtractedData: Clone + Send + Sync + 'static + Component;
-    type TaskResultPure: Clone + Send + Sync + 'static;
+    type TaskExtractedData: Send + Sync + 'static;
+    type TaskResultPure: Send + Sync + 'static;
 
     fn extract(&self, worker_entity: Entity, world: &mut World) -> Self::TaskExtractedData;
 
@@ -198,6 +238,14 @@ pub struct WriteBack;
 /// Spawn a new background task.
 #[derive(ScheduleLabel, Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct SpawnTask;
+
+/// Spawn a new background task.
+#[derive(SystemSet, Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum SpawnTaskSet {
+    PreSpawn,
+    Spawn,
+    PostSpawn,
+}
 
 /// Called after the propagation of the task result to the ECS.
 #[derive(ScheduleLabel, Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -275,10 +323,10 @@ impl HandleTask {
         let _ = world.try_schedule_scope(WriteBack, |world, schedule| {
             schedule.run(world);
         });
-        let _ = world.try_schedule_scope(SpawnTask, |world, schedule| {
+        let _ = world.try_schedule_scope(PostWriteBack, |world, schedule| {
             schedule.run(world);
         });
-        let _ = world.try_schedule_scope(PostWriteBack, |world, schedule| {
+        let _ = world.try_schedule_scope(SpawnTask, |world, schedule| {
             schedule.run(world);
         });
     }
@@ -295,7 +343,11 @@ pub fn extract<T: TaskWorkerTrait>(world: &mut World) {
 
     let extractor = worker.worker.clone();
     let extracted_data = extractor.extract(entity_ctx, world);
-    world.entity_mut(entity_ctx).insert(extracted_data.clone());
+    world
+        .entity_mut(entity_ctx)
+        .insert(TaskExtractedDataHolder::<T> {
+            extracted_data: Some(extracted_data),
+        });
 }
 
 /// This system spawns a [`WorkTask`] is none are ongoing.
@@ -306,17 +358,21 @@ pub fn extract<T: TaskWorkerTrait>(world: &mut World) {
 #[expect(clippy::type_complexity)]
 pub fn spawn_task<T: TaskWorkerTrait>(
     mut commands: Commands,
-    q_context: Query<(
+    mut q_context: Query<(
         Entity,
         &TaskWorker<T>,
         &Timestep,
         &SubstepCount,
-        &T::TaskExtractedData,
+        &mut TaskExtractedDataHolder<T>,
     )>,
     virtual_time: Res<Time<Virtual>>,
 ) {
-    let Ok((entity_ctx, worker, timestep, substep_count, extracted_data)) = q_context.get_single()
+    let Ok((entity_ctx, worker, timestep, substep_count, mut extracted_data)) =
+        q_context.get_single_mut()
     else {
+        return;
+    };
+    let Some(extracted_data) = extracted_data.extracted_data.take() else {
         return;
     };
     let timestep = timestep.timestep;
@@ -326,7 +382,6 @@ pub fn spawn_task<T: TaskWorkerTrait>(
 
     let (sender, recv) = crossbeam_channel::unbounded();
 
-    let extracted_data = extracted_data.clone();
     let worker = worker.clone();
     let thread_pool = AsyncComputeTaskPool::get();
     thread_pool
@@ -385,12 +440,13 @@ pub fn finish_task_and_store_result<T: TaskWorkerTrait>(
         }
     };
     // TODO: configure this somehow.
-    if task.update_frames_elapsed > 60 {
+    /*if task.update_frames_elapsed > 60 {
         // Do not tolerate more delay over the rendering: block on the result of the simulation.
         if let Ok(result) = task.recv.recv() {
             handle_result(result);
         }
-    } else if let Ok(result) = task.recv.try_recv() {
+    } else */
+    if let Ok(result) = task.recv.try_recv() {
         handle_result(result);
     }
 }

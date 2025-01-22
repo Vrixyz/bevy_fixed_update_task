@@ -7,11 +7,29 @@ so you can improve your time budget.
 
 [Read more about it.](docs/physics_timestep_loop.md)
 
+## Practical advantage
+
+Regain control over your frame per seconds: know when your expensive tasks are making you fall behind, and be able to adapt accordingly.
+
+### Practical example
+
+Using [rapier](https://rapier.rs/), simulation step can be expensive, leading to lags, like this example:
+
+<video src="https://github.com/user-attachments/assets/f9c0ab20-3726-43cc-ac1e-b34860483857" height="350"></video>
+
+Using this crate, you can simulate the expensive task in background, allowing to keep a steady visual frame per second.
+
+<video src="https://github.com/user-attachments/assets/9215f0d6-a6d5-4a35-ab1a-45d300a607f4" height="350"></video>
+
+Both these recordings are simulating 80 000 bodies targeting a fixed update of 30 frames per second.
+
+Pair this technique with interpolation or other visual feedbacks to obtain a very responsive feeling.
+
 ## How it works
 
-:warning: this crate makes most sense when using bevy's `multi_threaded` feature. Otherwise, this just adds unnecessary overhead.
+:warning: This crate makes most sense when using bevy's `multi_threaded` feature. Otherwise, this just adds unnecessary overhead.
 
-It's quite similar to how bevy's fixed update works, but eagerly extracts ECS data into a background task, to synchronize it only when `Time<Virtual>` catches back to the "simulated time".
+This crate adds a custom scheduling comparable to bevy's fixed update, but eagerly extracts ECS data into a background task, to synchronize it only when `Time<Virtual>` catches back to the "simulated time".
 
 The implementation doesn't use `Time<Fixed>` but a component approach `TimeStep`, `SubstepCount`, `TaskToRender`.
 

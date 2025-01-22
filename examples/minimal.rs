@@ -2,7 +2,8 @@
 
 use bevy::prelude::*;
 use bevy_fixed_update_task::{
-    BackgroundFixedUpdatePlugin, TaskResults, TaskWorker, TaskWorkerTrait, Timestep,
+    BackgroundFixedUpdatePlugin, TaskResults, TaskToRenderTime, TaskWorker, TaskWorkerTrait,
+    Timestep,
 };
 
 use std::time::Duration;
@@ -34,11 +35,16 @@ fn setup_worker(mut commands: Commands) {
     ));
 }
 
-fn print_simulation_time(simulation_time: Res<SimulationTime>, time: Res<Time>) {
+fn print_simulation_time(
+    simulation_time: Res<SimulationTime>,
+    time: Res<Time>,
+    task_to_render_time: Query<&TaskToRenderTime>,
+) {
     println!(
-        "Simulation time: {:?} ; time: {:?}",
+        "Simulation time: {:?} ; time: {:?} ; task to render time: {:?}s",
         simulation_time.time,
-        time.elapsed()
+        time.elapsed(),
+        task_to_render_time.single().diff
     );
 }
 
@@ -61,8 +67,7 @@ impl TaskWorkerTrait for TaskWorkerTraitImpl {
         timestep: Duration,
         _substep_count: u32,
     ) -> Self::TaskResultPure {
-        std::thread::sleep(Duration::from_secs_f32(0.1));
-        input.time += timestep;
+        input.time += timestep * _substep_count;
         input.time
     }
 
