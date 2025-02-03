@@ -24,9 +24,9 @@ jobs:
       - uses: actions/checkout@v4
       - run: sudo apt-get install -y cmake libxcb-composite0-dev
       - name: Check
-        run: cargo check
+        run: cargo check --examples
       - name: Clippy
-        run: cargo clippy
+        run: cargo clippy --examples
       - name: cargo doc
         run: cargo doc --document-private-items --no-deps
   # If this fails, consider changing your text or adding something to .typos.toml

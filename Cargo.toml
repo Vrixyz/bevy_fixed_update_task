@@ -5,10 +5,15 @@ description = "A fixed update for bevy, unthrottled from bevy's default update l
 edition = "2021"
 license = "MIT OR Apache-2.0"
 keywords = ["bevy", "task", "performance", "update", "simulation"]
+repository = "https://github.com/Vrixyz/bevy_fixed_update_task"
 
 [features]
 default = ["x11"]
 x11 = ["bevy/x11"]
+
+[profile.dev]
+# Use slightly better optimization by default, as examples otherwise seem laggy.
+opt-level = 1
 
 [dependencies]
 bevy = { version = "0.15", default-features = false }
@@ -25,8 +30,11 @@ bevy = { version = "0.15", default-features = false, features = [
     "bevy_winit",
     "default_font",
     "bevy_gizmos",
+    "bevy_dev_tools",
     # Without multi threading, this crate adds a frame delay on the fixed update.
     "multi_threaded",
 ] }
 rand = "0.8"
 bevy_transform_interpolation = { version = "0.1", git = "https://github.com/Vrixyz/bevy_transform_interpolation.git", branch = "background_task" }
+# bevy_rapier2d = { version = "0.28", git = "https://github.com/dimforge/bevy_rapier.git", branch = "master" }
+bevy_rapier2d = { version = "0.28", git = "https://github.com/Vrixyz/bevy_rapier.git", branch = "opt-out-physics_set" }
