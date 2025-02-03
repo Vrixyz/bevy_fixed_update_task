@@ -179,9 +179,7 @@ fn change_timestep(mut time: Query<&mut Timestep>, keyboard_input: Res<ButtonInp
         time.timestep = Duration::from_secs_f64(new_timestep);
     }
     if keyboard_input.pressed(KeyCode::ArrowDown) {
-        let new_timestep = (time.timestep.as_secs_f64() * 1.1)
-            .min(1.0)
-            .max(1.0 / 255.0);
+        let new_timestep = (time.timestep.as_secs_f64() * 1.1).clamp(1.0 / 255.0, 1.0);
         time.timestep = Duration::from_secs_f64(new_timestep);
     }
 }
@@ -196,7 +194,7 @@ fn change_sleep_time(
         sleep_time.0 = Duration::from_secs_f64(new_sleep_time);
     }
     if keyboard_input.pressed(KeyCode::ArrowLeft) {
-        let new_sleep_time = (sleep_time.0.as_secs_f64() * 1.1).min(1.0).max(1.0 / 255.0);
+        let new_sleep_time = (sleep_time.0.as_secs_f64() * 1.1).clamp(1.0 / 255.0, 1.0);
         sleep_time.0 = Duration::from_secs_f64(new_sleep_time);
     }
 }
@@ -397,7 +395,7 @@ pub mod task_user {
                 query
                     .iter(world)
                     .map(|(entity, transform, lin_vel, ang_vel)| {
-                        (entity, transform.clone(), lin_vel.clone(), ang_vel.clone())
+                        (entity, *transform, lin_vel.clone(), ang_vel.clone())
                     })
                     .collect();
             let sleep_time = world.get_resource::<TaskSleepTime>().unwrap().0;
@@ -411,13 +409,12 @@ pub mod task_user {
             &self,
             _worker_entity: Entity,
             result: bevy_fixed_update_task::TaskResult<Self>,
-            mut world: &mut World,
+            world: &mut World,
         ) {
             let mut q_transforms =
                 world.query_filtered::<(&mut Transform, &mut LinearVelocity), With<ToMove>>();
             for (entity, new_transform, new_lin_vel, _) in result.result_raw.result.iter() {
-                if let Ok((mut transform, mut lin_vel)) = q_transforms.get_mut(&mut world, *entity)
-                {
+                if let Ok((mut transform, mut lin_vel)) = q_transforms.get_mut(world, *entity) {
                     *transform = *new_transform;
                     *lin_vel = new_lin_vel.clone();
                 }

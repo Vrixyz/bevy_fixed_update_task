@@ -20,7 +20,7 @@ fn main() {
         RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.0)
             .with_custom_initialization(RapierContextInitialization::NoAutomaticRapierContext)
             .in_schedule(bevy_fixed_update_task::FixedMain)
-            .set_physics_sets_to_initialize([].into()),
+            .with_physics_sets_systems([].into()),
         RapierDebugRenderPlugin::default(),
     ));
     app.add_systems(Startup, (setup_worker, (setup_info, setup_physics)).chain());
@@ -100,7 +100,7 @@ pub fn setup_physics(mut commands: Commands) {
      * Camera
      */
     commands.spawn((
-        Camera2d::default(),
+        Camera2d,
         OrthographicProjection {
             scale: 6f32,
             ..OrthographicProjection::default_2d()
@@ -185,7 +185,7 @@ impl TaskWorkerTrait for TaskWorkerTraitImpl {
         // but rapier API requires it.
         let time = world.get_resource::<Time>().unwrap();
 
-        let time = time.clone();
+        let time = *time;
         let mut rapier_context_query = world.query::<(
             &mut RapierContextSimulation,
             &RapierContextColliders,
@@ -215,7 +215,7 @@ impl TaskWorkerTrait for TaskWorkerTraitImpl {
         let query_pipeline = query_pipeline.clone();
         // let mut context: RapierContext =
         //    unsafe { mem::transmute_copy::<RapierContext, RapierContext>(&*context_ecs) };
-        let configuration = config.clone();
+        let configuration = *config;
 
         let sim_to_render_time = sim_to_render_time.clone();
 
